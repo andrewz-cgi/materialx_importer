@@ -1,0 +1,8 @@
+{
+  "color_variation": true,
+  "ao": true,
+  "translucency": true,
+  "opacity": true,
+  "metalness": false,
+  "displacement": false
+}
