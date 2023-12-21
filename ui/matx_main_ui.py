@@ -19,7 +19,7 @@ class MaterialxImporterUI(QMainWindow):
         self.setWindowTitle("MaterialX importer 0.1")
         self.setGeometry(100, 100, 400, 300)
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(400, 300)
+        self.setFixedSize(400, 350)
 
         main_widget = QWidget()
         main_layout = QVBoxLayout()
@@ -53,6 +53,11 @@ class MaterialxImporterUI(QMainWindow):
         self.material_name = QLineEdit()
         self.material_name.setPlaceholderText("Material name")
         main_layout.addWidget(self.material_name)
+        self.context_box = QComboBox()
+        self.context_box.addItem("mat")
+        self.context_box.addItem("obj")
+        self.context_box.addItem("stage")
+        main_layout.addWidget(self.context_box)
         self.create_btn = QPushButton("Create MaterialX")
         self.create_btn.clicked.connect(self.on_create_materialx)
         main_layout.addWidget(self.create_btn)
@@ -105,13 +110,24 @@ class MaterialxImporterUI(QMainWindow):
             if self.debug: print("Select texture folder and material name")
             return
 
-        obj: hou.Node = hou.node("/obj")
 
-        matnet: hou.ShopNode = obj.node("materialx_collection")
-        if matnet is None:
-            matnet = obj.createNode("matnet", "materialx_collection")
+        context_test = self.context_box.currentText()
+        context = hou.node("/mat")
 
-        mat_subnet: hou.VopNode = matnet.createNode("subnet", self.material_name.text() + "_MAT")
+        if context_test == "obj":
+            obj: hou.Node = hou.node("/obj")
+            context: hou.ShopNode = obj.node("materialx_collection")
+            if context is None:
+                context = obj.createNode("matnet", "materialx_collection")
+        elif context_test == "stage":
+            stage: hou.Node = hou.node("/stage")
+            context: hou.ShopNode = stage.node("materialx_collection")
+            if context is None:
+                context = stage.createNode("materiallibrary", "materialx_collection")
+                context.parm("matpathprefix").set("/materialx_collection/")
+                context.parm("genpreviewshaders").set(0)
+
+        mat_subnet: hou.VopNode = context.createNode("subnet", self.material_name.text() + "_MAT")
 
         for node in mat_subnet.children():
             node.destroy()
@@ -154,12 +170,13 @@ class MaterialxImporterUI(QMainWindow):
         mat_subnet.setMaterialFlag(True)
         mat_subnet.layoutChildren()
 
-        matnet.layoutChildren()
+        context.layoutChildren()
 
     def on_load_preset(self):
         if self.debug: print("Loafing an existing")
 
-        preset_path = hou.expandString(hou.ui.selectFile(hou.getenv("HOME") + "/houdini19.5/scripts/materialx_importer/presets", title="Select Preset", chooser_mode=hou.fileChooserMode.Read))
+        houdini_version = hou.applicationVersion()
+        preset_path = hou.expandString(hou.ui.selectFile(hou.getenv("HOME") + "/houdini{}.{}/scripts/materialx_importer/presets".format(houdini_version[0], houdini_version[1]), title="Select Preset", chooser_mode=hou.fileChooserMode.Read))
         if not preset_path: return
 
         if not preset_validation(preset_path):
@@ -184,10 +201,8 @@ class MaterialxImporterUI(QMainWindow):
 
         if self.debug: print("---- Saving new preset ----")
 
-        home_path = hou.getenv("HOME")
-        scritps_path = os.path.join(home_path, "houdini19.5", "scripts")
-
-        save_path = hou.expandString(hou.ui.selectFile(hou.getenv("HOME") + "/houdini19.5/scripts/materialx_importer/presets", title="Save new preset", chooser_mode=hou.fileChooserMode.Write))
+        houdini_version = hou.applicationVersion()
+        save_path = hou.expandString(hou.ui.selectFile(hou.getenv("HOME") + "/houdini{}.{}/scripts/materialx_importer/presets".format(houdini_version[0], houdini_version[1]), title="Save new preset", chooser_mode=hou.fileChooserMode.Write))
         if not save_path: return
 
         if not save_path.endswith(".json"):
