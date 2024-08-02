@@ -1,7 +1,11 @@
-from .ui.matx_main_ui import MaterialxImporterUI
+from .ui.main_window import MaterialxImporterUI
 import hou
+
+win = None
 
 def run():
 
-    win = MaterialxImporterUI(parent=hou.qt.mainWindow())
-    win.show()
+    global win
+    if not win:
+        win = MaterialxImporterUI(parent=hou.qt.mainWindow())
+        win.show()
